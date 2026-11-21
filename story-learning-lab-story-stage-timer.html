@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Story Learning Lab - Story Stage Timer</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<style>
+/* ===================== App UI (all rules scoped to .sll-app) ===================== */
+.sll-app, .sll-app * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+.sll-app {
+  --blue: #2b5b84; --blue-dark: #1f4666; --blue-soft: #eaf1f8;
+  --amber: #f5a623; --amber-dark: #d98d0b;
+  --ink: #1f2d3a; --muted: #5d6f80; --line: #d9e4ee; --bg: #f1f6fa;
+  font-family: 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  color: var(--ink);
+  background: var(--bg);
+  padding: 24px 16px 40px;
+  line-height: 1.4;
+}
+.sll-wrap { max-width: 1080px; margin: 0 auto; }
+
+.sll-header { display: flex; align-items: center; gap: 14px; margin-bottom: 22px; }
+.sll-mark { width: 46px; height: 46px; flex: none; border-radius: 13px; background: var(--blue); display: grid; place-items: center; color: var(--amber); font-weight: 800; font-size: 1.1rem; }
+.sll-app .sll-title-main { margin: 0; padding: 0; font-family: inherit; font-size: 1.6rem; font-weight: 700; line-height: 1.15; letter-spacing: normal; text-transform: none; color: var(--blue); }
+.sll-app .sll-tagline { margin: 3px 0 0; font-size: .95rem; color: var(--muted); }
+
+.sll-layout { display: grid; grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); gap: 22px; align-items: start; }
+@media (max-width: 860px) { .sll-layout { grid-template-columns: minmax(0, 1fr); } }
+
+.sll-card { background: #fff; border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 2px 12px rgba(31, 70, 102, .07); }
+.sll-controls { padding: 4px 18px 18px; }
+.sll-field { padding: 15px 0; border-bottom: 1px solid var(--line); }
+.sll-field.sll-last { border-bottom: 0; }
+.sll-label { display: block; margin: 0 0 8px; font-size: .85rem; font-weight: 700; color: var(--blue); }
+.sll-sublabel { display: block; margin: 12px 0 6px; font-size: .8rem; font-weight: 600; color: var(--muted); }
+.sll-hint { margin: 7px 0 0; font-size: .8rem; color: var(--muted); }
+.sll-hint.sll-bad { color: #b3261e; font-weight: 600; }
+
+.sll-app input[type="text"], .sll-app textarea, .sll-app select {
+  width: 100%; margin: 0; padding: 10px 12px;
+  border: 1px solid #c5d3df; border-radius: 10px; background: #fff; color: var(--ink);
+  font: inherit; font-size: .95rem;
+}
+.sll-app textarea { min-height: 150px; resize: vertical; line-height: 1.5; }
+.sll-app input + textarea { margin-top: 8px; }
+.sll-app button { font: inherit; }
+.sll-app input:focus-visible, .sll-app textarea:focus-visible, .sll-app button:focus-visible {
+  outline: 3px solid rgba(74, 144, 226, .5); outline-offset: 1px;
+}
+
+.sll-seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; padding: 4px; background: var(--blue-soft); border-radius: 12px; }
+.sll-seg button { min-height: 42px; padding: 8px 4px; border: 0; border-radius: 9px; background: transparent; color: var(--blue); font-size: .92rem; font-weight: 600; cursor: pointer; }
+.sll-seg button:hover { background: rgba(43, 91, 132, .08); }
+.sll-seg button[aria-pressed="true"] { background: var(--blue); color: #fff; box-shadow: 0 1px 3px rgba(31, 70, 102, .35); }
+
+.sll-step-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px; margin-bottom: 10px; }
+.sll-step-name { font-weight: 600; font-size: .95rem; }
+.sll-step-name small { display: block; font-weight: 400; font-size: .78rem; color: var(--muted); }
+.sll-step { display: flex; align-items: center; gap: 8px; }
+.sll-step button { flex: none; width: 42px; height: 42px; padding: 0; border: 2px solid var(--blue); border-radius: 50%; background: #fff; color: var(--blue); font-size: 1.4rem; font-weight: 700; line-height: 1; cursor: pointer; }
+.sll-step button:hover { background: var(--blue-soft); }
+.sll-step output { min-width: 34px; text-align: center; font-size: 1.2rem; font-weight: 700; color: var(--blue); }
+
+.sll-actions { display: grid; gap: 10px; padding-top: 16px; }
+.sll-btn { width: 100%; min-height: 48px; padding: 12px 16px; border: 0; border-radius: 14px; font-size: 1rem; font-weight: 700; cursor: pointer; transition: transform .08s ease; }
+.sll-btn:active { transform: translateY(2px); }
+.sll-btn[disabled] { opacity: .6; cursor: wait; }
+.sll-btn-primary { background: var(--amber); color: #2a1d00; box-shadow: 0 3px 0 var(--amber-dark); }
+.sll-btn-outline { background: #fff; color: var(--blue); border: 2px solid var(--blue); }
+.sll-btn-small { width: auto; min-height: 40px; margin-top: 12px; padding: 8px 16px; border-radius: 10px; font-size: .9rem; }
+
+.sll-preview { padding: 14px; min-width: 0; }
+.sll-preview-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.sll-preview-title { font-weight: 700; color: var(--blue); }
+.sll-switch { display: inline-flex; align-items: center; gap: 10px; padding: 6px 4px; border: 0; background: none; color: var(--ink); font-weight: 600; font-size: .92rem; cursor: pointer; }
+.sll-switch-track { width: 44px; height: 26px; border-radius: 13px; background: #b9c8d6; position: relative; transition: background .15s; }
+.sll-switch-track::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, .3); transition: transform .15s; }
+.sll-switch[aria-checked="true"] .sll-switch-track { background: var(--blue); }
+.sll-switch[aria-checked="true"] .sll-switch-track::after { transform: translateX(18px); }
+#sll-notice { display: none; margin-bottom: 12px; padding: 10px 14px; border-radius: 10px; font-size: .9rem; background: #fff6e5; border: 1px solid #f0c36b; color: #6b4300; }
+#sll-notice.sll-error { background: #fdecec; border-color: #f0a3a3; color: #8a1f1f; }
+.sll-stage { display: flex; justify-content: center; padding: 16px; border-radius: 12px; background: #e3ecf4; overflow: hidden; }
+.sll-paper { position: relative; flex: none; background: #fff; border-radius: 2px; box-shadow: 0 8px 26px rgba(31, 70, 102, .2); overflow: hidden; }
+.sll-paper-inner { position: absolute; left: 0; top: 0; transform-origin: top left; }
+.sll-tip { margin: 12px 0 0; text-align: center; font-size: .85rem; color: var(--muted); }
+#sll-cover { position: fixed; inset: 0; z-index: 99999; display: flex; align-items: center; justify-content: center; background: #fff; color: #2b5b84; font: 700 1.2rem 'Segoe UI', Arial, sans-serif; }
+
+
+
+/* ===================== Worksheet pages (Letter 816 x 1050 px, or A4 793 x 1116 px) ===================== */
+.sll-sheet { position: relative; display: flex; flex-direction: column; overflow: hidden; background: #fff; color: #111; font-family: 'Arial', 'Liberation Sans', sans-serif; padding: 30px 46px 58px; }
+.sll-sheet, .sll-sheet * { box-sizing: border-box; }
+.sll-sheet { page-break-after: always; break-after: page; }
+.sll-sheet:last-child { page-break-after: auto; break-after: auto; }
+.sll-sheet .ps-head { display: flex; flex-direction: column; align-items: center; }
+.sll-sheet .ps-logo { display: block; height: 46px; width: auto; margin: 0 auto 4px; }
+.sll-sheet .ps-title { text-align: center; font-size: 24px; font-weight: 700; line-height: 1.15; color: #2b5b84; }
+.sll-sheet .ps-title.ps-small { font-size: 18px; text-align: right; width: 100%; }
+.sll-sheet .ps-top { display: flex; justify-content: space-between; align-items: flex-end; gap: 30px; width: 100%; margin-top: 12px; }
+.sll-sheet .ps-field { display: flex; align-items: flex-end; gap: 8px; font-size: 16px; font-weight: 700; }
+.sll-sheet .ps-field span { display: inline-block; width: 220px; height: 18px; border-bottom: 2px solid #111; }
+.sll-sheet .ps-badge { display: inline-block; margin-top: 6px; padding: 1px 14px; border-radius: 12px; background: #f5a623; color: #1f1400; font-size: 14px; font-weight: 700; }
+.sll-sheet .ps-sec { margin-top: var(--gap, 16px); }
+.sll-sheet .ps-h { font-size: 21px; font-weight: 700; color: #1f4666; }
+.sll-sheet .ps-i { font-size: 15px; line-height: 1.35; color: #333; margin: 4px 0 10px; }
+.sll-sheet .ps-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 28px; }
+.sll-sheet .ps-item { display: flex; align-items: center; gap: 10px; font-size: 17px; min-height: 30px; }
+.sll-sheet .ps-sent { display: flex; align-items: center; flex-wrap: wrap; }
+.sll-sheet .ps-num { flex: none; width: 28px; height: 28px; border: 2px solid #111; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; }
+.sll-sheet .ps-ref { display: flex; justify-content: space-around; gap: 16px; margin: 10px 0 16px; padding: 8px 12px; border: 2px solid #4a90c2; border-radius: 12px; }
+.sll-sheet .ps-refcol { text-align: center; flex: 1; display: flex; flex-direction: column; align-items: center; }
+.sll-sheet .ps-refcap { font-size: 15px; font-weight: 700; color: #1f4666; line-height: 1.2; min-height: 2.5em; display: flex; align-items: flex-end; justify-content: center; text-align: center; }
+.sll-sheet .ps-figs { display: flex; justify-content: center; align-items: flex-end; gap: 6px; height: 50px; margin: 4px 0; }
+.sll-sheet .ps-figs svg { height: 46px; width: auto; display: block; }
+.sll-sheet .ps-figs svg[viewBox="0 0 40 20"] { height: 22px; width: 44px; }
+.sll-sheet .ps-pt svg { height: 46px; }
+.sll-sheet .ps-refwords { font-size: 15px; line-height: 1.35; color: #111; min-height: 3em; text-align: center; }
+.sll-sheet .ps-clue { font-weight: 700; color: #2b5b84; }
+.sll-sheet .ps-q { flex: 1; min-width: 0; }
+.sll-sheet .ps-choices { font-size: 15px; margin-top: 4px; color: #111; }
+.sll-sheet .ps-choices span { margin-right: 14px; white-space: nowrap; }
+.sll-sheet .ps-correct { font-weight: 700; color: #1f4666; text-decoration: underline; }
+.sll-app input[type="text"].sll-full { width: 100%; margin: 9px 0 0; }
+.sll-sheet .ps-before { font-weight: 700; margin-right: 8px; }
+.sll-sheet .ps-blank { display: inline-block; width: 110px; min-height: 22px; border-bottom: 2px solid #111; text-align: center; font-weight: 700; color: #2b5b84; margin-right: 6px; }
+.sll-sheet .ps-term { display: flex; gap: 10px; font-size: 19px; }
+.sll-sheet .ps-tcol { flex: none; width: 150px; height: var(--row, 44px); display: flex; align-items: flex-end; gap: 10px; padding-bottom: calc(var(--row, 44px) * 0.2); }
+.sll-sheet .ps-tl { flex: none; width: 110px; }
+.sll-sheet .ps-glines { flex: 1; }
+.sll-sheet .ps-b { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.sll-sheet .ps-terms { flex: 1; display: flex; flex-direction: column; justify-content: space-evenly; }
+.sll-sheet .ps-gl { position: relative; height: var(--row, 44px); }
+.sll-sheet .ps-gl i { position: absolute; left: 0; right: 0; display: block; }
+.sll-sheet .ps-gl .gt { top: 0; border-top: 1.3px solid #9aa6b2; }
+.sll-sheet .ps-gl .gm { top: 40%; border-top: 1px dashed #b8c2cc; }
+.sll-sheet .ps-gl .gb { top: 80%; border-top: 1.3px solid #9aa6b2; }
+.sll-sheet .ps-akey { margin-top: 10px; font-size: 15px; font-style: italic; color: #2b5b84; }
+.sll-sheet .ps-box { flex: 1; margin-top: 14px; border: 3px solid #4a90c2; border-radius: 20px; min-height: 300px; }
+.sll-sheet .ps-wl { flex: none; margin-top: 18px; }
+.sll-sheet .ps-wl .ps-gl { height: 56px; }
+.sll-sheet .ps-foot { position: absolute; left: 46px; right: 46px; bottom: 14px; text-align: center; font-size: 12.5px; color: #555; }
+.sll-sheet .ps-noimg { display: none; }
+
+/* Items editor */
+.sll-item-row { display: grid; grid-template-columns: 1fr 108px 34px; gap: 6px; margin-bottom: 6px; }
+.sll-item-row input { padding: 8px 9px; font-size: .9rem; }
+.sll-item { margin-bottom: 16px; }
+.sll-item-row { margin-bottom: 0; }
+.sll-app .sll-ex { width: 100%; margin: 14px 0 0; padding: 6px 8px; font-size: .85rem; border: 1px solid #c5d3df; border-radius: 9px; background: #fff; color: #1f4666; }
+.sll-x { width: 34px; height: 34px; border: 1px solid #c5d3df; border-radius: 9px; background: #fff; color: #b3261e; font-size: 1.1rem; cursor: pointer; }
+#sll-pages { display: flex; flex-direction: column; gap: 18px; align-items: center; width: 100%; }
+
+.sll-sheet .ps-sec { margin-top: 16px; }
+.sll-sheet .ps-passage { padding: 14px 20px; border: 2px solid #cfdbe6; border-radius: 12px; background: #fff; color: #111; font-size: 22px; line-height: 2; }
+.sll-sheet .ps-passage p { margin: 0 0 .4em; }
+.sll-sheet .ps-passage p:last-child { margin-bottom: 0; }
+.sll-sheet .ps-rw { flex: 1 1 auto; margin-top: 8px; min-height: 120px; background: repeating-linear-gradient(to bottom, transparent 0, transparent 39px, #9aa9b8 39px, #9aa9b8 40px); font-size: 22px; line-height: 40px; color: #1f4666; font-style: italic; }
+.sll-sheet .ps-rw p { margin: 0; }
+.sll-sheet .ps-rw.ps-rwh, .sll-sheet .ps-rw.ps-rwk { background: none; }
+.sll-sheet .ps-rwh { flex: none; margin-top: 8px; }
+.sll-sheet .ps-rwh .ps-gl { height: 56px; }
+.sll-sheet .ps-rwk { font-size: 22px; line-height: 44px; color: #1f4666; font-style: italic; }
+.sll-sheet .ps-rwk p { margin: 0; }
+.sll-sheet .ps-chk { margin-top: 10px; font-size: 16px; line-height: 1.9; color: #111; }
+.sll-sheet .ps-cb { display: inline-block; width: 18px; height: 18px; border: 2px solid #111; margin-right: 10px; vertical-align: -3px; }
+.sll-sheet .ps-foot { margin-top: auto; text-align: center; position: static; }
+
+.tm-custom { display: flex; gap: 10px; }
+.tm-custom label { flex: 1; font-size: 14px; color: #333; }
+.tm-custom input { display: block; width: 100%; margin-top: 4px; padding: 8px 10px; font-size: 18px; border: 1px solid #b9c7d4; border-radius: 8px; }
+.tm-presets { flex-wrap: wrap; }
+.tm-stage { position: relative; text-align: center; padding: 28px 20px; border-radius: 14px; background: #eef4fa; border: 3px solid #4a90c2; min-height: 460px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; }
+.tm-label { font-size: 28px; font-weight: 700; color: #1f4666; min-height: 36px; }
+.tm-time { font-size: 150px; font-weight: 800; line-height: 1; color: #2b5b84; font-variant-numeric: tabular-nums; }
+.tm-bar { width: 80%; height: 22px; border-radius: 11px; background: #d9e4ee; overflow: hidden; }
+#tm-fill { height: 100%; width: 100%; background: #4a90c2; transition: width .25s linear; }
+.tm-msg { font-size: 26px; font-weight: 700; min-height: 34px; color: #1f4666; }
+.tm-stage.warn { border-color: #f5a623; }
+.tm-stage.warn .tm-time { color: #b26a00; }
+.tm-stage.warn #tm-fill { background: #f5a623; }
+.tm-stage.danger { border-color: #c0392b; }
+.tm-stage.danger .tm-time { color: #c0392b; animation: tmpulse 1s infinite; }
+.tm-stage.danger #tm-fill { background: #c0392b; }
+.tm-stage.done { border-color: #1f7a4d; }
+.tm-stage.done .tm-time { color: #1f7a4d; }
+.tm-stage.done #tm-fill { background: #1f7a4d; width: 0; }
+@keyframes tmpulse { 50% { opacity: .55; } }
+.tm-exit { display: none; position: absolute; top: 16px; right: 16px; }
+.tm-stage:fullscreen, .tm-stage.tm-overlay { background: #fff; border: 0; border-radius: 0; min-height: 100vh; width: 100%; padding: 4vh 4vw; gap: 3vh; justify-content: center; }
+.tm-stage.tm-overlay { position: fixed; inset: 0; z-index: 9999; height: 100vh; }
+.tm-stage:fullscreen .tm-label, .tm-stage.tm-overlay .tm-label { font-size: 5vh; }
+.tm-stage:fullscreen .tm-time, .tm-stage.tm-overlay .tm-time { font-size: min(17vw, 34vh); max-width: 100%; }
+.tm-stage:fullscreen .tm-bar, .tm-stage.tm-overlay .tm-bar { width: 90%; height: 3.5vh; }
+.tm-stage:fullscreen .tm-msg, .tm-stage.tm-overlay .tm-msg { font-size: 5vh; }
+.tm-stage.tm-overlay .tm-exit { display: inline-block; width: auto; left: auto; right: 16px; top: 16px; }
+
+.sg-block { border: 1px solid #d5e0ea; border-radius: 10px; padding: 10px 12px; margin-top: 10px; background: #fbfdff; }
+.sg-head { font-weight: 700; color: #1f4666; font-size: 16px; margin-bottom: 6px; }
+.sg-block input[type="text"] { display: block; width: 100%; padding: 7px 10px; font-size: 15px; border: 1px solid #b9c7d4; border-radius: 8px; }
+.sg-times { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 14px; color: #333; }
+.sg-times input { width: 70px; padding: 6px 8px; font-size: 16px; border: 1px solid #b9c7d4; border-radius: 8px; }
+.tm-custom-note { font-size: 13px; color: #556; margin: 6px 0 0; }
+.sg-who { font-size: 34px; font-weight: 800; color: #b26a00; min-height: 42px; }
+.sg-names { border: 1px solid #d5e0ea; border-radius: 10px; padding: 10px 12px; margin-top: 10px; background: #fbfdff; }
+.sg-names textarea { display: block; width: 100%; padding: 7px 10px; font-size: 15px; border: 1px solid #b9c7d4; border-radius: 8px; font-family: inherit; }
+.sll-app .sll-seg.sg-mode { margin-top: 8px; }
+.tm-stage:fullscreen .sg-who, .tm-stage.tm-overlay .sg-who { font-size: 6vh; }
+.sg-chips { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
+.sg-chip { padding: 6px 12px; border-radius: 999px; background: #fff; border: 2px solid #b9c7d4; color: #556; font-weight: 700; font-size: 16px; }
+.sg-chip.done { background: #e6f2ea; border-color: #1f7a4d; color: #1f7a4d; }
+.sg-chip.current { background: #2b5b84; border-color: #2b5b84; color: #fff; }
+.sg-prompt { font-size: 24px; color: #333; max-width: 90%; min-height: 60px; line-height: 1.35; }
+.tm-stage .tm-time { font-size: 120px; }
+.tm-stage.tm-overlay .sg-prompt, .tm-stage:fullscreen .sg-prompt { font-size: 4vh; }
+.tm-stage:fullscreen .sg-chip, .tm-stage.tm-overlay .sg-chip { font-size: 3vh; }
+</style>
+</head>
+<body style="margin:0">
+
+<div class="sll-app">
+  <div class="sll-wrap">
+
+    <header class="sll-header">
+      <div class="sll-mark" aria-hidden="true">Aa</div>
+      <div>
+        <h1 class="sll-title-main">Story Stage Timer</h1>
+        <p class="sll-tagline">Story Learning Lab: four timed stages to match the Plot Mountain worksheet</p>
+      </div>
+    </header>
+
+    <div class="sll-layout">
+
+      <section class="sll-card sll-controls" aria-label="Stage settings">
+        <div class="sll-field">
+          <span class="sll-label">Stages, prompts and times</span>
+          <p class="sll-hint">Each stage counts down, then the next one starts automatically. Set the time for each stage separately.</p>
+          <div class="sg-block">
+            <div class="sg-head">1. First</div>
+            <label class="sublabel-inline" for="sg-p0">Prompt for students</label>
+            <input type="text" id="sg-p0" maxlength="140" value="Who are the characters? Where and when does the story happen?">
+            <div class="sg-times"><label for="sg-m0">Minutes</label><input type="number" id="sg-m0" min="0" max="59" value="2"></div>
+          </div>
+          <div class="sg-block">
+            <div class="sg-head">2. Next</div>
+            <label class="sublabel-inline" for="sg-p1">Prompt for students</label>
+            <input type="text" id="sg-p1" maxlength="140" value="What is the problem? Why is it a problem?">
+            <div class="sg-times"><label for="sg-m1">Minutes</label><input type="number" id="sg-m1" min="0" max="59" value="2"></div>
+          </div>
+          <div class="sg-block">
+            <div class="sg-head">3. Then</div>
+            <label class="sublabel-inline" for="sg-p2">Prompt for students</label>
+            <input type="text" id="sg-p2" maxlength="140" value="What do the characters do? What happens next?">
+            <div class="sg-times"><label for="sg-m2">Minutes</label><input type="number" id="sg-m2" min="0" max="59" value="2"></div>
+          </div>
+          <div class="sg-block">
+            <div class="sg-head">4. Last</div>
+            <label class="sublabel-inline" for="sg-p3">Prompt for students</label>
+            <input type="text" id="sg-p3" maxlength="140" value="How is the problem solved? How does the story end?">
+            <div class="sg-times"><label for="sg-m3">Minutes</label><input type="number" id="sg-m3" min="0" max="59" value="2"></div>
+          </div>
+        </div>
+
+        <div class="sg-names">
+          <label class="sll-label" for="sg-names">Students (one name per line)</label>
+          <textarea id="sg-names" rows="5">Student 1
+Student 2
+Student 3
+Student 4
+Student 5
+Student 6</textarea>
+          <p class="sll-hint">Each Reset calls the next four students, so run it again until everyone has had a turn. Changing the names or the mode starts the list again.</p>
+          <span class="sll-sublabel" id="sg-mode-label" style="display:block;margin-top:8px">How to call on students</span>
+          <div class="sll-seg sg-mode" id="sg-mode" role="group" aria-labelledby="sg-mode-label">
+            <button type="button" data-mode="random">Random (everyone before anyone repeats)</button>
+            <button type="button" data-mode="order">In order</button>
+          </div>
+        </div>
+
+        <button type="button" class="sll-switch" id="tm-sound" role="switch" aria-checked="true">
+          <span class="sll-switch-track"></span>Beep at each stage change
+        </button>
+
+        <div class="sll-actions">
+          <button type="button" class="sll-btn sll-btn-primary" id="tm-start">Start</button>
+          <button type="button" class="sll-btn sll-btn-outline" id="tm-pause">Pause</button>
+          <button type="button" class="sll-btn sll-btn-outline" id="tm-skip">Next stage</button>
+        </div>
+        <div class="sll-actions">
+          <button type="button" class="sll-btn sll-btn-outline" id="tm-reset">Reset to stage 1</button>
+          <button type="button" class="sll-btn sll-btn-outline" id="tm-full">Show full screen</button>
+        </div>
+      </section>
+
+      <section class="sll-card sll-preview" aria-label="Stage display">
+        <div class="tm-stage" id="tm-stage">
+          <button type="button" class="sll-btn sll-btn-outline tm-exit" id="tm-exit">Close</button>
+          <div class="sg-chips" id="sg-chips"></div>
+          <div class="tm-label" id="tm-show"></div>
+          <div class="sg-who" id="sg-who"></div>
+          <div class="sg-prompt" id="sg-show"></div>
+          <div class="tm-time" id="tm-time">02:00</div>
+          <div class="tm-bar"><div id="tm-fill"></div></div>
+          <div class="tm-msg" id="tm-msg" role="status" aria-live="polite"></div>
+        </div>
+        <p class="sll-tip">Press Start to run stage 1, then stage 2, 3 and 4. Use Show full screen for the board or projector. Press Esc to go back.</p>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var LABELS = ['1. First', '2. Next', '3. Then', '4. Last'];
+  function $(id) { return document.getElementById(id); }
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function clamp(v, lo, hi) { v = parseInt(v, 10); if (isNaN(v)) v = lo; return Math.min(hi, Math.max(lo, v)); }
+  function fmt(n) { return pad(Math.floor(n / 60)) + ':' + pad(n % 60); }
+
+  var st = { queue: [], assign: [null, null, null, null], mode: 'random', idx: 0, left: 120, total: 120, running: false, end: 0, timer: null, audio: null, durs: [120, 120, 120, 120] };
+
+  function readDurations() {
+    for (var i = 0; i < 4; i++) {
+      var m = clamp($('sg-m' + i).value, 0, 59);
+      $('sg-m' + i).value = m;
+      st.durs[i] = Math.max(1, m * 60);
+    }
+  }
+
+  function stageDuration() { return st.durs[st.idx]; }
+
+  // Give each stage one student. Random mode shuffles the list and goes through all names before any repeat.
+  function shuffle(a) {
+    for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; }
+    return a;
+  }
+  // The queue carries on between runs, so each Reset calls the next students. Changing names or mode starts it again.
+  function buildAssign() {
+    var names = $('sg-names').value.split('\n').map(function (t) { return t.trim(); }).filter(Boolean);
+    st.assign = [null, null, null, null];
+    if (!names.length) return;
+    for (var i = 0; i < 4; i++) {
+      if (!st.queue.length) st.queue = st.mode === 'random' ? shuffle(names.slice()) : names.slice();
+      st.assign[i] = st.queue.shift();
+    }
+  }
+
+  function render() {
+    var stage = $('tm-stage');
+    st.total = stageDuration();
+    $('tm-show').textContent = LABELS[st.idx];
+    $('sg-show').textContent = $('sg-p' + st.idx).value.trim();
+    $('sg-who').textContent = st.assign[st.idx] ? 'Called on: ' + st.assign[st.idx] : '';
+    $('tm-time').textContent = fmt(st.left);
+    $('tm-fill').style.width = (st.total ? (st.left / st.total) * 100 : 0) + '%';
+    var chips = '';
+    for (var i = 0; i < 4; i++) {
+      var cls = 'sg-chip' + (i < st.idx || (i === st.idx && st.left <= 0 && st.idx === 3) ? ' done' : '') + (i === st.idx && !(st.left <= 0 && st.idx === 3) ? ' current' : '');
+      chips += '<span class="' + cls + '">' + LABELS[i] + '</span>';
+    }
+    $('sg-chips').innerHTML = chips;
+    stage.classList.remove('warn', 'danger', 'done');
+    if (st.left <= 0 && st.idx === 3) stage.classList.add('done');
+    else if (st.left <= 10) stage.classList.add('danger');
+    else if (st.left <= st.total * 0.25) stage.classList.add('warn');
+    $('tm-start').disabled = st.running;
+    $('tm-pause').disabled = !st.running;
+    $('tm-start').textContent = st.running ? 'Running' : (st.left < st.total ? 'Resume' : 'Start');
+  }
+
+  function beep(count) {
+    if ($('tm-sound').getAttribute('aria-checked') !== 'true') return;
+    try {
+      var ctx = st.audio || new (window.AudioContext || window.webkitAudioContext)();
+      st.audio = ctx;
+      for (var i = 0; i < count; i++) {
+        var o = ctx.createOscillator(), g = ctx.createGain();
+        o.frequency.value = 880;
+        o.connect(g); g.connect(ctx.destination);
+        var t = ctx.currentTime + i * 0.5;
+        g.gain.setValueAtTime(0.25, t);
+        g.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+        o.start(t); o.stop(t + 0.36);
+      }
+    } catch (e) { /* sound is optional */ }
+  }
+
+  function finishAll() {
+    clearInterval(st.timer); st.timer = null;
+    st.running = false; st.left = 0;
+    $('tm-msg').textContent = 'Story time is up!';
+    render();
+    beep(3);
+  }
+
+  // Move to the next stage and keep running if the timer was running
+  function nextStage(fromTimer) {
+    if (st.idx >= 3) { finishAll(); return; }
+    st.idx++;
+    st.left = stageDuration();
+    if (st.running) st.end = Date.now() + st.left * 1000;
+    $('tm-msg').textContent = 'On to ' + LABELS[st.idx] + '!';
+    render();
+    if (fromTimer) beep(1);
+  }
+
+  function tick() {
+    st.left = Math.max(0, Math.ceil((st.end - Date.now()) / 1000));
+    if (st.left <= 0) {
+      if (st.idx >= 3) { finishAll(); return; }
+      nextStage(true);
+      return;
+    }
+    render();
+  }
+
+  function start() {
+    if (st.running) return;
+    if (st.idx === 3 && st.left <= 0) { reset(); }
+    try { if (!st.audio) st.audio = new (window.AudioContext || window.webkitAudioContext)(); } catch (e) {}
+    st.end = Date.now() + st.left * 1000;
+    st.running = true;
+    $('tm-msg').textContent = '';
+    st.timer = setInterval(tick, 250);
+    render();
+  }
+
+  function pause() {
+    if (!st.running) return;
+    clearInterval(st.timer); st.timer = null;
+    st.left = Math.max(0, Math.ceil((st.end - Date.now()) / 1000));
+    st.running = false;
+    render();
+  }
+
+  function reset() {
+    pause();
+    readDurations();
+    buildAssign();
+    st.idx = 0;
+    st.left = st.durs[0];
+    $('tm-msg').textContent = '';
+    render();
+  }
+
+  function skip() {
+    if (st.idx >= 3) { finishAll(); return; }
+    readDurations();
+    if (st.running) { clearInterval(st.timer); st.timer = null; }
+    st.running = false;
+    nextStage(false);
+    if (st.idx < 4) { st.running = false; }
+    render();
+  }
+
+  function fullScreen() {
+    var stage = $('tm-stage');
+    function overlay() { stage.classList.add('tm-overlay'); render(); }
+    if (!stage.requestFullscreen) return overlay();
+    try {
+      var p = stage.requestFullscreen();
+      if (p && p.catch) p.catch(overlay);
+    } catch (e) { overlay(); }
+    render();
+  }
+
+  function closeFull() {
+    $('tm-stage').classList.remove('tm-overlay');
+    if (document.fullscreenElement) document.exitFullscreen().catch(function () {});
+  }
+
+  function init() {
+    readDurations();
+    buildAssign();
+    st.idx = 0; st.left = st.durs[0];
+    render();
+    document.querySelectorAll('#sg-mode button').forEach(function (b) {
+      b.setAttribute('aria-pressed', String(b.dataset.mode === st.mode));
+      b.addEventListener('click', function () {
+        st.mode = b.dataset.mode; st.queue = [];
+        document.querySelectorAll('#sg-mode button').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); });
+        reset();
+      });
+    });
+    st.lastNames = $('sg-names').value;
+    $('sg-names').addEventListener('change', function () {
+      if ($('sg-names').value === st.lastNames) return;
+      st.lastNames = $('sg-names').value;
+      st.queue = []; reset();
+    });
+    for (var i = 0; i < 4; i++) {
+      $('sg-p' + i).addEventListener('input', render);
+      $('sg-m' + i).addEventListener('change', reset);
+    }
+    $('tm-sound').addEventListener('click', function () {
+      $('tm-sound').setAttribute('aria-checked', String($('tm-sound').getAttribute('aria-checked') !== 'true'));
+    });
+    $('tm-start').addEventListener('click', start);
+    $('tm-pause').addEventListener('click', pause);
+    $('tm-skip').addEventListener('click', skip);
+    $('tm-reset').addEventListener('click', reset);
+    $('tm-full').addEventListener('click', fullScreen);
+    $('tm-exit').addEventListener('click', closeFull);
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape') closeFull();
+      if (e.key === ' ' && e.target === document.body) { e.preventDefault(); st.running ? pause() : start(); }
+    });
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
