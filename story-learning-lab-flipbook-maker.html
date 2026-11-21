@@ -676,10 +676,7 @@
     var key = title + '|' + coverH;
     if (coverCache.key === key && coverCache.url) return Promise.resolve(coverCache.url);
     return new Promise(function (resolve) {
-      var logo = new Image();
-      logo.onload = draw;
-      logo.onerror = draw;   // still make the cover if the logo fails to load
-      logo.src = LOGO_SRC;
+      draw();
       function draw() {
         var W = 1200, H = coverH;
         var c = document.createElement('canvas'); c.width = W; c.height = H;
@@ -688,26 +685,10 @@
         grd.addColorStop(0, '#2b5b84'); grd.addColorStop(1, '#1f4666');
         g.fillStyle = grd; g.fillRect(0, 0, W, H);
         g.strokeStyle = '#f5a623'; g.lineWidth = 14; g.strokeRect(60, 60, W - 120, H - 120);
-        if (logo.naturalWidth) {
-          // Lighten the dark grey subtitle so it reads on the blue cover
-          var lc = document.createElement('canvas');
-          lc.width = logo.naturalWidth; lc.height = logo.naturalHeight;
-          var lg = lc.getContext('2d');
-          lg.drawImage(logo, 0, 0);
-          var id = lg.getImageData(0, 0, lc.width, lc.height), dd = id.data;
-          for (var q = 0; q < dd.length; q += 4) {
-            var r0 = dd[q], g0 = dd[q + 1], b0 = dd[q + 2];
-            var grey = Math.max(r0, g0, b0) - Math.min(r0, g0, b0) < 18;
-            if (dd[q + 3] > 0 && grey && (r0 + g0 + b0) / 3 < 150) { dd[q] = dd[q + 1] = dd[q + 2] = 236; }
-          }
-          lg.putImageData(id, 0, 0);
-          var lw = 760, lh = lw * logo.naturalHeight / logo.naturalWidth;
-          g.drawImage(lc, (W - lw) / 2, 200, lw, lh);
-        }
-        g.fillStyle = '#f5a623'; g.fillRect((W - 320) / 2, 600, 320, 8);
+        g.fillStyle = '#f5a623'; g.fillRect((W - 320) / 2, 470, 320, 8);
         g.fillStyle = '#ffffff'; g.font = 'bold 120px Arial, Helvetica, sans-serif';
         g.textAlign = 'center'; g.textBaseline = 'top';
-        var y = 760;
+        var y = 630;
         wrapText(g, title || 'My Flipbook', 980).forEach(function (t) { g.fillText(t, W / 2, y); y += 140; });
         g.fillStyle = '#f5a623'; g.font = 'bold 58px Arial, Helvetica, sans-serif';
         g.fillText('Story Learning Lab', W / 2, H - 260);
