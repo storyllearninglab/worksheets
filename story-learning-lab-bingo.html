@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Story Learning Lab - Bingo Card Maker</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+<style>
+/* ===================== App UI (all rules scoped to .sll-app) ===================== */
+.sll-app, .sll-app * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+.sll-app {
+  --blue: #2b5b84; --blue-dark: #1f4666; --blue-soft: #eaf1f8;
+  --amber: #f5a623; --amber-dark: #d98d0b;
+  --ink: #1f2d3a; --muted: #5d6f80; --line: #d9e4ee; --bg: #f1f6fa;
+  font-family: 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  color: var(--ink);
+  background: var(--bg);
+  padding: 24px 16px 40px;
+  line-height: 1.4;
+}
+.sll-wrap { max-width: 1080px; margin: 0 auto; }
+
+.sll-header { display: flex; align-items: center; gap: 14px; margin-bottom: 22px; }
+.sll-mark { width: 46px; height: 46px; flex: none; border-radius: 13px; background: var(--blue); display: grid; place-items: center; }
+.sll-mark svg { width: 26px; height: 26px; fill: var(--amber); }
+.sll-app .sll-title-main { margin: 0; padding: 0; font-family: inherit; font-size: 1.6rem; font-weight: 700; line-height: 1.15; letter-spacing: normal; text-transform: none; color: var(--blue); }
+.sll-app .sll-tagline { margin: 3px 0 0; font-size: .95rem; color: var(--muted); }
+
+.sll-layout { display: grid; grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); gap: 22px; align-items: start; }
+@media (max-width: 860px) { .sll-layout { grid-template-columns: minmax(0, 1fr); } }
+
+.sll-card { background: #fff; border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 2px 12px rgba(31, 70, 102, .07); }
+.sll-controls { padding: 4px 18px 18px; }
+.sll-field { padding: 15px 0; border-bottom: 1px solid var(--line); }
+.sll-field.sll-last { border-bottom: 0; }
+.sll-label { display: block; margin: 0 0 8px; font-size: .85rem; font-weight: 700; color: var(--blue); }
+.sll-sublabel { display: block; margin: 12px 0 6px; font-size: .8rem; font-weight: 600; color: var(--muted); }
+.sll-hint { margin: 7px 0 0; font-size: .8rem; color: var(--muted); }
+.sll-hint.sll-bad { color: #b3261e; font-weight: 600; }
+.sll-hide { display: none !important; }
+
+.sll-app select, .sll-app textarea, .sll-app input[type="text"], .sll-app input[type="number"] {
+  width: 100%; margin: 0; padding: 10px 12px;
+  border: 1px solid #c5d3df; border-radius: 10px; background: #fff; color: var(--ink);
+  font: inherit; font-size: .95rem;
+}
+.sll-app textarea { min-height: 150px; resize: vertical; line-height: 1.5; }
+.sll-app select + input, .sll-app input + textarea { margin-top: 8px; }
+.sll-app button { font: inherit; }
+.sll-app select:focus-visible, .sll-app textarea:focus-visible, .sll-app input:focus-visible, .sll-app button:focus-visible {
+  outline: 3px solid rgba(74, 144, 226, .5); outline-offset: 1px;
+}
+
+/* Segmented controls */
+.sll-seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 4px; padding: 4px; background: var(--blue-soft); border-radius: 12px; }
+.sll-seg button { min-height: 42px; padding: 8px 4px; border: 0; border-radius: 9px; background: transparent; color: var(--blue); font-size: .92rem; font-weight: 600; cursor: pointer; }
+.sll-seg button:hover { background: rgba(43, 91, 132, .08); }
+.sll-seg button[aria-pressed="true"] { background: var(--blue); color: #fff; box-shadow: 0 1px 3px rgba(31, 70, 102, .35); }
+
+/* Number stepper */
+.sll-step { display: flex; align-items: center; gap: 10px; }
+.sll-step button { flex: none; width: 46px; height: 46px; padding: 0; border: 2px solid var(--blue); border-radius: 50%; background: #fff; color: var(--blue); font-size: 1.5rem; font-weight: 700; line-height: 1; cursor: pointer; }
+.sll-step button:hover { background: var(--blue-soft); }
+.sll-app .sll-step input { width: 100%; text-align: center; font-size: 1.2rem; font-weight: 700; color: var(--blue); }
+
+/* Buttons */
+.sll-actions { display: grid; gap: 10px; padding-top: 16px; }
+.sll-btn { width: 100%; min-height: 48px; padding: 12px 16px; border: 0; border-radius: 14px; font-size: 1rem; font-weight: 700; cursor: pointer; transition: transform .08s ease; }
+.sll-btn:active { transform: translateY(2px); }
+.sll-btn[disabled] { opacity: .6; cursor: wait; }
+.sll-btn-primary { background: var(--amber); color: #2a1d00; box-shadow: 0 3px 0 var(--amber-dark); }
+.sll-btn-blue { background: var(--blue); color: #fff; box-shadow: 0 3px 0 var(--blue-dark); }
+.sll-btn-outline { background: #fff; color: var(--blue); border: 2px solid var(--blue); }
+
+/* Preview panel */
+.sll-preview { padding: 14px; min-width: 0; }
+.sll-preview-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.sll-preview-title { font-weight: 700; color: var(--blue); }
+.sll-preview-bar .sll-seg { min-width: 220px; }
+.sll-pager { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 12px; }
+.sll-pager button { min-height: 40px; padding: 6px 16px; border: 2px solid var(--blue); border-radius: 10px; background: #fff; color: var(--blue); font-weight: 700; cursor: pointer; }
+.sll-pager button:hover:not([disabled]) { background: var(--blue-soft); }
+.sll-pager button[disabled] { opacity: .35; cursor: default; }
+.sll-pager span { min-width: 110px; text-align: center; font-weight: 600; color: var(--ink); }
+
+#sll-notice { display: none; margin-bottom: 12px; padding: 10px 14px; border-radius: 10px; font-size: .9rem; background: #fff6e5; border: 1px solid #f0c36b; color: #6b4300; }
+#sll-notice.sll-error { background: #fdecec; border-color: #f0a3a3; color: #8a1f1f; }
+
+.sll-stage { display: flex; justify-content: center; padding: 16px; border-radius: 12px; background: #e3ecf4; overflow: hidden; }
+.sll-paper { position: relative; flex: none; background: #fff; border-radius: 2px; box-shadow: 0 8px 26px rgba(31, 70, 102, .2); overflow: hidden; }
+.sll-paper-inner { position: absolute; left: 0; top: 0; transform-origin: top left; }
+.sll-tip { margin: 12px 0 0; text-align: center; font-size: .85rem; color: var(--muted); }
+
+#sll-cover { position: fixed; inset: 0; z-index: 99999; display: flex; align-items: center; justify-content: center; background: #fff; color: #2b5b84; font: 700 1.2rem 'Segoe UI', Arial, sans-serif; text-align: center; padding: 20px; }
+
+/* ===================== Printed pages (A4, 793 x 1116 px) =====================
+   Used for the live preview AND the PDF. Cards always fill the page in an even grid.
+   Selectors depend only on .sll-sheet / .ps-* because html2pdf clones the sheet. */
+.sll-sheet {
+  width: 793px; height: 1116px; padding: 34px 48px 26px;
+  display: flex; flex-direction: column; justify-content: space-between;
+  background: #fff; color: #111; overflow: hidden;
+  font-family: 'Calibri', 'Carlito', 'Arial', sans-serif;
+  line-height: 1.25; letter-spacing: normal; text-transform: none; text-align: left;
+}
+.sll-sheet, .sll-sheet * { box-sizing: border-box; }
+.sll-sheet > * { flex-shrink: 0; }
+.sll-sheet .ps-foot { margin-top: 10px; text-align: center; font-size: 12.5px; color: #555; }
+
+/* Bingo cards */
+.sll-sheet .ps-bpage { flex: 1 1 auto; min-height: 0; display: grid; gap: 10px; }
+.sll-sheet .ps-bcard { display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 10px; border: 2px dashed #9fb2c3; border-radius: 12px; overflow: hidden; }
+.sll-sheet .ps-bcard.ps-empty { border-color: transparent; }
+.sll-sheet .ps-chead { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; width: 100%; }
+.sll-sheet .ps-ctitle { flex: 1; min-width: 0; font-weight: 700; line-height: 1.1; color: #2b5b84; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.sll-sheet .ps-cnum { flex: none; font-weight: 700; color: #777; }
+.sll-sheet .ps-bgrid { display: grid; gap: 2px; background: #2b5b84; border: 3px solid #2b5b84; border-radius: 8px; overflow: hidden; }
+.sll-sheet .ps-bcell { display: flex; align-items: center; justify-content: center; padding: 3px; background: #fff; text-align: center; font-weight: 700; line-height: 1.1; color: #111; overflow: hidden; word-break: break-word; }
+.sll-sheet .ps-free { flex-direction: column; background: #fff3d1; color: #b36b00; }
+.sll-sheet .ps-cname { display: flex; align-items: flex-end; gap: 6px; width: 100%; font-weight: 700; color: #333; }
+.sll-sheet .ps-cname span { flex: 1; border-bottom: 2px solid #111; height: 1.2em; }
+.sll-sheet .ps-msg { grid-column: 1 / -1; grid-row: 1 / -1; display: flex; align-items: center; justify-content: center; font-size: 22px; color: #888; text-align: center; padding: 40px; }
+
+/* Calling cards */
+.sll-sheet .ps-title { margin: 0; text-align: center; font-size: 30px; font-weight: 700; line-height: 1.1; color: #2b5b84; }
+.sll-sheet .ps-sub { margin-top: 6px; padding-bottom: 10px; text-align: center; font-size: 15px; color: #555; border-bottom: 2px solid #2b5b84; }
+.sll-sheet .ps-callgrid { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(8, 1fr); margin-top: 14px; border-top: 1.5px dashed #8fa6bb; border-left: 1.5px dashed #8fa6bb; }
+.sll-sheet .ps-callcell { display: flex; align-items: center; justify-content: center; padding: 8px 10px; border-right: 1.5px dashed #8fa6bb; border-bottom: 1.5px dashed #8fa6bb; text-align: center; font-weight: 700; line-height: 1.1; color: #1f4666; overflow: hidden; word-break: break-word; }
+</style>
+</head>
+<body style="margin:0">
+
+<div class="sll-app">
+  <div class="sll-wrap">
+
+    <header class="sll-header">
+      <div class="sll-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24"><path d="M3 3h5.2v5.2H3zM9.4 3h5.2v5.2H9.4zM15.8 3H21v5.2h-5.2zM3 9.4h5.2v5.2H3zM15.8 9.4H21v5.2h-5.2zM3 15.8h5.2V21H3zM9.4 15.8h5.2V21H9.4zM15.8 15.8H21V21h-5.2z"></path><circle cx="12" cy="12" r="2.6"></circle></svg>
+      </div>
+      <div>
+        <h1 class="sll-title-main">Bingo Card Maker</h1>
+        <p class="sll-tagline">Story Learning Lab: printable ESL / EFL bingo cards for the whole class</p>
+      </div>
+    </header>
+
+    <div class="sll-layout">
+
+      <!-- Controls -->
+      <section class="sll-card sll-controls" aria-label="Bingo settings">
+
+        <div class="sll-field">
+          <label class="sll-label" for="sll-preset">Words</label>
+          <select id="sll-preset">
+            <option value="custom">Your own words (type below)</option>
+            <option value="animals">Animals</option>
+            <option value="colors">Colors and shapes</option>
+            <option value="school">School things</option>
+            <option value="food">Food and drink</option>
+            <option value="actions">Classroom actions</option>
+          </select>
+          <input type="text" id="sll-title" maxlength="40" placeholder="Card title, e.g. Animal Bingo" aria-label="Card title">
+          <textarea id="sll-words" rows="6" aria-label="Words, one per line or separated by commas" placeholder="cat&#10;dog&#10;bird&#10;..."></textarea>
+          <p class="sll-hint" id="sll-wordhint"></p>
+        </div>
+
+        <div class="sll-field">
+          <span class="sll-label" id="sll-size-label">Card size</span>
+          <div class="sll-seg" id="sll-size" role="group" aria-labelledby="sll-size-label">
+            <button type="button" data-size="3">3x3</button>
+            <button type="button" data-size="4">4x4</button>
+            <button type="button" data-size="5">5x5</button>
+          </div>
+          <div id="sll-free-wrap">
+            <span class="sll-sublabel" id="sll-free-label">Middle square</span>
+            <div class="sll-seg" id="sll-free" role="group" aria-labelledby="sll-free-label">
+              <button type="button" data-free="yes">Free space</button>
+              <button type="button" data-free="no">A word</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="sll-field">
+          <label class="sll-label" for="sll-cards">How many different cards?</label>
+          <div class="sll-step">
+            <button type="button" id="sll-minus" aria-label="One fewer card">&minus;</button>
+            <input type="number" id="sll-cards" min="1" max="60" value="24" inputmode="numeric">
+            <button type="button" id="sll-plus" aria-label="One more card">+</button>
+          </div>
+          <p class="sll-hint">Set this to the number of students. Every card is different.</p>
+        </div>
+
+        <div class="sll-field">
+          <span class="sll-label" id="sll-per-label">Cards per page</span>
+          <div class="sll-seg" id="sll-per" role="group" aria-labelledby="sll-per-label">
+            <button type="button" data-per="1">1</button>
+            <button type="button" data-per="2">2</button>
+            <button type="button" data-per="4">4</button>
+            <button type="button" data-per="6">6</button>
+          </div>
+          <p class="sll-hint" id="sll-pages-hint"></p>
+        </div>
+
+        <div class="sll-field sll-last">
+          <span class="sll-label" id="sll-case-label">Letters</span>
+          <div class="sll-seg" id="sll-case" role="group" aria-labelledby="sll-case-label">
+            <button type="button" data-case="lower">abc</button>
+            <button type="button" data-case="upper">ABC</button>
+            <button type="button" data-case="asis">As typed</button>
+          </div>
+        </div>
+
+        <div class="sll-actions">
+          <button type="button" class="sll-btn sll-btn-primary" id="sll-shuffle">Make New Cards</button>
+          <button type="button" class="sll-btn sll-btn-blue" id="sll-pdf">Download Bingo Cards PDF</button>
+          <button type="button" class="sll-btn sll-btn-outline" id="sll-calls">Download Calling Cards PDF</button>
+        </div>
+      </section>
+
+      <!-- Live preview of the printed pages -->
+      <section class="sll-card sll-preview" aria-label="Printed page preview">
+        <div class="sll-preview-bar">
+          <span class="sll-preview-title">Preview</span>
+          <div class="sll-seg" id="sll-view" role="group" aria-label="What to preview">
+            <button type="button" data-view="cards">Bingo cards</button>
+            <button type="button" data-view="calls">Calling cards</button>
+          </div>
+        </div>
+        <div class="sll-pager">
+          <button type="button" id="sll-prev" aria-label="Previous page">&larr; Prev</button>
+          <span id="sll-page-label">Page 1 of 1</span>
+          <button type="button" id="sll-next" aria-label="Next page">Next &rarr;</button>
+        </div>
+        <div id="sll-notice" role="status"></div>
+        <div class="sll-stage" id="sll-stage">
+          <div class="sll-paper" id="sll-paper"><div class="sll-paper-inner" id="sll-paper-inner"></div></div>
+        </div>
+        <p class="sll-tip">Calling cards are the words to cut out and draw from a bag while you play.</p>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  var SHEET_W = 793, SHEET_H = 1116;
+
+  // Card layouts: how many cards per page and how big each grid is
+  var LAYOUTS = {
+    1: { cols: 1, rows: 1, grid: 640, title: 40, small: 16 },
+    2: { cols: 1, rows: 2, grid: 400, title: 30, small: 15 },
+    4: { cols: 2, rows: 2, grid: 320, title: 24, small: 13 },
+    6: { cols: 2, rows: 3, grid: 260, title: 19, small: 11 }
+  };
+  var CALLS_PER_PAGE = 24;
+
+  var PRESETS = {
+    animals: 'cat, dog, bird, fish, horse, cow, pig, sheep, duck, rabbit, tiger, lion, elephant, monkey, bear, frog, snake, mouse, turtle, zebra, giraffe, chicken, goat, panda, kangaroo, dolphin, penguin, owl',
+    colors: 'red, blue, green, yellow, orange, purple, pink, black, white, brown, gray, gold, silver, circle, square, triangle, star, heart, rectangle, diamond, oval, cross, moon, arrow, line, cone',
+    school: 'book, pencil, eraser, ruler, desk, chair, bag, notebook, scissors, glue, marker, crayon, board, clock, teacher, student, paper, computer, door, window, map, calendar, pen, tape, backpack, lunch box',
+    food: 'apple, banana, bread, rice, milk, egg, cheese, pizza, chicken, fish, soup, salad, cake, cookie, juice, water, tea, orange, grape, carrot, potato, tomato, hamburger, noodles, ice cream, sandwich, butter, sugar',
+    actions: 'sit, stand, read, write, listen, speak, open, close, draw, sing, jump, run, walk, clap, point, wave, eat, drink, sleep, wash, cook, swim, dance, climb, throw, catch, push, pull'
+  };
+  var TITLES = { animals: 'Animal Bingo', colors: 'Colors and Shapes Bingo', school: 'School Bingo', food: 'Food Bingo', actions: 'Action Bingo' };
+
+  var settings = { size: 4, free: true, per: 4, count: 24, letters: 'lower', view: 'cards' };
+  var words = [];
+  var cards = [];       // each card is an array of size*size entries (null = free space)
+  var page = 0;
+  var debounce = null;
+
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function fmt(w) { return settings.letters === 'upper' ? w.toUpperCase() : (settings.letters === 'lower' ? w.toLowerCase() : w); }
+  function isFree() { return settings.free && settings.size % 2 === 1; }
+  function cellCount() { return settings.size * settings.size - (isFree() ? 1 : 0); }
+
+  function setNotice(msg, isError) {
+    var n = $('sll-notice');
+    if (!msg) { n.style.display = 'none'; n.textContent = ''; return; }
+    n.textContent = msg;
+    n.className = isError ? 'sll-error' : '';
+    n.style.display = 'block';
+  }
+
+  /* ---------- Words and cards ---------- */
+  function parseWords() {
+    var seen = new Set(), out = [];
+    $('sll-words').value.split(/[\n,;]+/).forEach(function (w) {
+      w = w.trim().replace(/\s+/g, ' ');
+      if (!w) return;
+      var k = w.toLowerCase();
+      if (seen.has(k)) return;
+      seen.add(k);
+      out.push(w);
+    });
+    return out;
+  }
+
+  function shuffle(a) {
+    a = a.slice();
+    for (var i = a.length - 1; i > 0; i--) {
+      var j = Math.floor(Math.random() * (i + 1)), t = a[i]; a[i] = a[j]; a[j] = t;
+    }
+    return a;
+  }
+
+  // Every card gets a different set of words where possible (and always a different arrangement)
+  function makeCards(list, n, free, count) {
+    var need = n * n - (free ? 1 : 0), setSeen = {}, seqSeen = {}, out = [];
+    for (var k = 0; k < count; k++) {
+      var pick = null, t;
+      for (t = 0; t < 300 && !pick; t++) {
+        var cand = shuffle(list).slice(0, need);
+        var sig = cand.slice().sort().join('|');
+        if (!setSeen[sig]) { pick = cand; setSeen[sig] = 1; }
+      }
+      for (t = 0; t < 300 && !pick; t++) {
+        var cand2 = shuffle(list).slice(0, need);
+        var sig2 = cand2.join('|');
+        if (!seqSeen[sig2]) pick = cand2;
+      }
+      if (!pick) pick = shuffle(list).slice(0, need);
+      seqSeen[pick.join('|')] = 1;
+      var card = pick.slice();
+      if (free) card.splice((n * n - 1) / 2, 0, null);
+      out.push(card);
+    }
+    return out;
+  }
+
+  function generate() {
+    words = parseWords();
+    var n = settings.size, need = cellCount();
+    var hint = $('sll-wordhint');
+    cards = [];
+    if (words.length < need) {
+      hint.className = 'sll-hint sll-bad';
+      hint.textContent = words.length + ' words. A ' + n + 'x' + n + ' card needs at least ' + need + '.';
+      setNotice('A ' + n + 'x' + n + ' card needs at least ' + need + ' words' + (isFree() ? ' (the middle is a free space)' : '') + '. You have ' + words.length + '.', true);
+    } else {
+      hint.className = 'sll-hint';
+      hint.textContent = words.length + ' words. Each card uses ' + need + ' of them.';
+      cards = makeCards(words, n, isFree(), settings.count);
+      if (words.length < Math.ceil(need * 1.4)) {
+        setNotice('Tip: with only ' + words.length + ' words, the cards will look quite similar. About ' + Math.ceil(need * 1.5) + ' or more words makes them more different.', false);
+      } else {
+        setNotice('');
+      }
+    }
+    page = 0;
+    refresh();
+  }
+
+  /* ---------- Page markup (shared by preview and PDF) ---------- */
+  function cellFont(text, cellPx) {
+    var parts = text.split(/\s+/), longest = 1;
+    parts.forEach(function (p) { longest = Math.max(longest, p.length); });
+    var factor = settings.letters === 'upper' ? 0.66 : 0.58;
+    var byWidth = (cellPx - 12) / (longest * factor);
+    var byHeight = (cellPx - 10) / (Math.min(parts.length, 3) * 1.15);
+    return Math.max(8, Math.min(cellPx * 0.36, byWidth, byHeight));
+  }
+
+  function footHTML() {
+    return '<div class="ps-foot">Created with Story Learning Lab. Visit www.storylearninglab.com for more classroom resources.</div>';
+  }
+
+  function cardsPageHTML(startIdx) {
+    var L = LAYOUTS[settings.per], n = settings.size;
+    var cellPx = (L.grid - 6 - (n - 1) * 2) / n;
+    var title = $('sll-title').value.trim() || 'Bingo!';
+    var out = '';
+    if (!cards.length) {
+      out = '<div class="ps-msg">Add more words on the left to make bingo cards.</div>';
+    } else {
+      for (var s = 0; s < L.cols * L.rows; s++) {
+        var card = cards[startIdx + s];
+        if (!card) { out += '<div class="ps-bcard ps-empty"></div>'; continue; }
+        var cells = card.map(function (w) {
+          if (w === null) {
+            return '<div class="ps-bcell ps-free"><svg viewBox="0 0 24 24" width="' + Math.round(cellPx * 0.4) + '" height="' + Math.round(cellPx * 0.4) + '" fill="#f5a623"><path d="M12 2l2.9 6.9 7.1.6-5.4 4.7 1.7 7.1L12 17.6 5.7 21.3l1.7-7.1L2 9.5l7.1-.6z"></path></svg><span style="font-size:' + Math.round(cellPx * 0.2) + 'px">FREE</span></div>';
+          }
+          var t = fmt(w);
+          return '<div class="ps-bcell" style="font-size:' + cellFont(t, cellPx).toFixed(1) + 'px">' + esc(t) + '</div>';
+        }).join('');
+        out += '<div class="ps-bcard">' +
+          '<div class="ps-chead"><div class="ps-ctitle" style="font-size:' + L.title + 'px">' + esc(title) + '</div><div class="ps-cnum" style="font-size:' + L.small + 'px">No. ' + (startIdx + s + 1) + '</div></div>' +
+          '<div class="ps-bgrid" style="width:' + L.grid + 'px;height:' + L.grid + 'px;grid-template-columns:repeat(' + n + ',1fr);grid-template-rows:repeat(' + n + ',1fr)">' + cells + '</div>' +
+          '<div class="ps-cname" style="font-size:' + L.small + 'px">Name:<span></span></div>' +
+        '</div>';
+      }
+    }
+    return '<div class="sll-sheet"><div class="ps-bpage" style="grid-template-columns:repeat(' + L.cols + ',1fr);grid-template-rows:repeat(' + L.rows + ',1fr)">' + out + '</div>' + footHTML() + '</div>';
+  }
+
+  function callsPageHTML(startIdx) {
+    var cellW = (SHEET_W - 96) / 3, cellH = 112;
+    var cells = '';
+    for (var s = 0; s < CALLS_PER_PAGE; s++) {
+      var w = words[startIdx + s];
+      if (!w) { cells += '<div class="ps-callcell"></div>'; continue; }
+      var t = fmt(w), parts = t.split(/\s+/), longest = 1;
+      parts.forEach(function (p) { longest = Math.max(longest, p.length); });
+      var factor = settings.letters === 'upper' ? 0.66 : 0.58;
+      var fs = Math.max(12, Math.min(40, (cellW - 28) / (longest * factor), (cellH - 16) / (Math.min(parts.length, 3) * 1.15)));
+      cells += '<div class="ps-callcell" style="font-size:' + fs.toFixed(1) + 'px">' + esc(t) + '</div>';
+    }
+    return '<div class="sll-sheet">' +
+      '<div class="ps-head"><div class="ps-title">' + esc($('sll-title').value.trim() || 'Bingo') + ': Calling Cards</div>' +
+      '<div class="ps-sub">Cut along the dashed lines. Draw one card at a time and call out the word.</div></div>' +
+      '<div class="ps-callgrid">' + cells + '</div>' + footHTML() + '</div>';
+  }
+
+  function pageCount() {
+    if (settings.view === 'calls') return Math.max(1, Math.ceil(words.length / CALLS_PER_PAGE));
+    return Math.max(1, Math.ceil(cards.length / settings.per));
+  }
+
+  function pageHTML(i) {
+    return settings.view === 'calls' ? callsPageHTML(i * CALLS_PER_PAGE) : cardsPageHTML(i * settings.per);
+  }
+
+  /* ---------- Preview ---------- */
+  function renderPreview() {
+    var total = pageCount();
+    if (page > total - 1) page = total - 1;
+    if (page < 0) page = 0;
+    $('sll-paper-inner').innerHTML = pageHTML(page);
+    $('sll-page-label').textContent = 'Page ' + (page + 1) + ' of ' + total;
+    $('sll-prev').disabled = page === 0;
+    $('sll-next').disabled = page >= total - 1;
+    var cardPages = cards.length ? Math.ceil(cards.length / settings.per) : 0;
+    $('sll-pages-hint').textContent = cards.length
+      ? cards.length + ' cards on ' + cardPages + (cardPages === 1 ? ' page' : ' pages') + '.'
+      : '';
+    fitPaper();
+  }
+
+  function fitPaper() {
+    var avail = $('sll-stage').clientWidth - 32;
+    var scale = Math.max(0.2, Math.min(1, avail / SHEET_W));
+    $('sll-paper').style.width = (SHEET_W * scale) + 'px';
+    $('sll-paper').style.height = (SHEET_H * scale) + 'px';
+    $('sll-paper-inner').style.transform = 'scale(' + scale + ')';
+  }
+
+  function refresh() { renderPreview(); }
+
+  function syncControls() {
+    function press(sel, attr, test) {
+      document.querySelectorAll(sel).forEach(function (b) { b.setAttribute('aria-pressed', String(test(b.dataset[attr]))); });
+    }
+    press('[data-size]', 'size', function (v) { return +v === settings.size; });
+    press('[data-free]', 'free', function (v) { return (v === 'yes') === settings.free; });
+    press('[data-per]', 'per', function (v) { return +v === settings.per; });
+    press('[data-case]', 'case', function (v) { return v === settings.letters; });
+    press('[data-view]', 'view', function (v) { return v === settings.view; });
+    $('sll-free-wrap').classList.toggle('sll-hide', settings.size % 2 === 0);
+    $('sll-cards').value = settings.count;
+  }
+
+  /* ---------- PDF (any number of pages) ---------- */
+  async function exportPDF(view, button) {
+    var total, filename;
+    var saved = settings.view;
+    settings.view = view;
+    if (view === 'calls') {
+      if (!words.length) { settings.view = saved; setNotice('Add some words first.', true); return; }
+      total = Math.ceil(words.length / CALLS_PER_PAGE);
+      filename = 'My-Bingo-Calling-Cards.pdf';
+    } else {
+      if (!cards.length) { settings.view = saved; setNotice('Add enough words to make cards first.', true); return; }
+      total = Math.ceil(cards.length / settings.per);
+      filename = 'My-Bingo-Cards.pdf';
+    }
+
+    var label = button.textContent;
+    button.disabled = true;
+    button.textContent = 'Preparing PDF…';
+    var cover = document.createElement('div');
+    cover.id = 'sll-cover';
+    document.body.appendChild(cover);
+    var scrollY = window.scrollY;
+    window.scrollTo(0, 0);
+
+    var holder = document.createElement('div');
+    holder.style.cssText = 'position:fixed;left:-10000px;top:0;width:' + SHEET_W + 'px;';
+    document.body.appendChild(holder);
+
+    var opt = {
+      margin: 0,
+      image: { type: 'jpeg', quality: 0.95 },
+      html2canvas: { scale: 2, useCORS: true, logging: false, scrollX: 0, scrollY: 0, backgroundColor: '#ffffff' },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+    };
+
+    try {
+      var pdf = null;
+      for (var i = 0; i < total; i++) {
+        cover.textContent = 'Preparing page ' + (i + 1) + ' of ' + total + '…';
+        await new Promise(function (r) { setTimeout(r, 30); }); // let the message paint
+        holder.innerHTML = pageHTML(i);
+        var worker = html2pdf().set(opt).from(holder.firstElementChild);
+        if (i === 0) {
+          pdf = await worker.toPdf().get('pdf');
+        } else {
+          var canvas = await worker.toCanvas().get('canvas');
+          pdf.addPage();
+          pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, 210, 210 * canvas.height / canvas.width);
+        }
+      }
+      pdf.save(filename);
+    } catch (err) {
+      console.error('PDF generation failed:', err);
+      setNotice('Sorry, the PDF could not be created. Please try again.', true);
+    } finally {
+      settings.view = saved;
+      holder.remove();
+      cover.remove();
+      window.scrollTo(0, scrollY);
+      button.disabled = false;
+      button.textContent = label;
+    }
+  }
+
+  /* ---------- Wire everything up ---------- */
+  function setCount(v) {
+    v = parseInt(v, 10);
+    if (isNaN(v)) v = settings.count;
+    settings.count = Math.max(1, Math.min(60, v));
+    $('sll-cards').value = settings.count;
+  }
+
+  function init() {
+    document.querySelectorAll('[data-size]').forEach(function (b) {
+      b.addEventListener('click', function () { settings.size = +b.dataset.size; syncControls(); generate(); });
+    });
+    document.querySelectorAll('[data-free]').forEach(function (b) {
+      b.addEventListener('click', function () { settings.free = b.dataset.free === 'yes'; syncControls(); generate(); });
+    });
+    document.querySelectorAll('[data-per]').forEach(function (b) {
+      b.addEventListener('click', function () { settings.per = +b.dataset.per; syncControls(); page = 0; refresh(); });
+    });
+    document.querySelectorAll('[data-case]').forEach(function (b) {
+      b.addEventListener('click', function () { settings.letters = b.dataset.case; syncControls(); refresh(); });
+    });
+    document.querySelectorAll('[data-view]').forEach(function (b) {
+      b.addEventListener('click', function () { settings.view = b.dataset.view; syncControls(); page = 0; refresh(); });
+    });
+
+    $('sll-minus').addEventListener('click', function () { setCount(settings.count - 1); generate(); });
+    $('sll-plus').addEventListener('click', function () { setCount(settings.count + 1); generate(); });
+    $('sll-cards').addEventListener('change', function () { setCount(this.value); generate(); });
+
+    $('sll-preset').addEventListener('change', function () {
+      var v = this.value;
+      if (v !== 'custom' && PRESETS[v]) {
+        $('sll-words').value = PRESETS[v].split(', ').join('\n');
+        $('sll-title').value = TITLES[v];
+        generate();
+      }
+    });
+    $('sll-words').addEventListener('input', function () {
+      $('sll-preset').value = 'custom';
+      clearTimeout(debounce);
+      debounce = setTimeout(generate, 300);
+    });
+    $('sll-title').addEventListener('input', function () { refresh(); });
+
+    $('sll-shuffle').addEventListener('click', generate);
+    $('sll-prev').addEventListener('click', function () { page--; refresh(); });
+    $('sll-next').addEventListener('click', function () { page++; refresh(); });
+    $('sll-pdf').addEventListener('click', function () { exportPDF('cards', this); });
+    $('sll-calls').addEventListener('click', function () { exportPDF('calls', this); });
+
+    if (window.ResizeObserver) new ResizeObserver(fitPaper).observe($('sll-stage'));
+    window.addEventListener('resize', fitPaper);
+
+    $('sll-preset').value = 'animals';
+    $('sll-words').value = PRESETS.animals.split(', ').join('\n');
+    $('sll-title').value = TITLES.animals;
+    syncControls();
+    generate();
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
