@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Story Learning Lab - Group Maker</title>
+<style>
+.sll-app, .sll-app * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+.sll-app {
+  --blue: #2b5b84; --blue-dark: #1f4666; --blue-soft: #eaf1f8;
+  --amber: #f5a623; --amber-dark: #d98d0b;
+  --ink: #1f2d3a; --muted: #5d6f80; --line: #d9e4ee; --bg: #f1f6fa;
+  font-family: 'Segoe UI', system-ui, -apple-system, 'Helvetica Neue', Arial, sans-serif;
+  color: var(--ink); background: var(--bg); padding: 24px 16px 40px; line-height: 1.4;
+}
+body { margin: 0; }
+.sll-wrap { max-width: 1180px; margin: 0 auto; }
+.sll-header { display: flex; align-items: center; gap: 14px; margin-bottom: 22px; }
+.sll-mark { width: 46px; height: 46px; flex: none; border-radius: 13px; background: var(--blue); display: grid; place-items: center; }
+.sll-mark svg { width: 30px; height: 30px; }
+.sll-app .sll-title-main { margin: 0; font-size: 1.6rem; font-weight: 700; line-height: 1.15; color: var(--blue); }
+.sll-app .sll-tagline { margin: 3px 0 0; font-size: .95rem; color: var(--muted); }
+
+.sll-layout { display: grid; grid-template-columns: minmax(300px, 370px) minmax(0, 1fr); gap: 22px; align-items: start; }
+@media (max-width: 880px) { .sll-layout { grid-template-columns: minmax(0, 1fr); } }
+.sll-card { background: #fff; border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 2px 12px rgba(31, 70, 102, .07); }
+
+.sll-controls { padding: 6px 18px 18px; }
+.sll-field { padding: 15px 0; border-bottom: 1px solid var(--line); }
+.sll-field:last-child { border-bottom: 0; }
+.sll-label { display: block; margin: 0 0 8px; font-size: .85rem; font-weight: 700; color: var(--blue); }
+.sll-hint { margin: 7px 0 0; font-size: .8rem; color: var(--muted); }
+.sll-hint.bad { color: #b3261e; font-weight: 600; }
+.sll-app select, .sll-app textarea, .sll-app input[type="number"], .sll-app input[type="text"] {
+  width: 100%; margin: 0; padding: 10px 12px; border: 1px solid #c5d3df; border-radius: 10px;
+  background: #fff; color: var(--ink); font: inherit; font-size: .95rem;
+}
+.sll-app textarea { resize: vertical; min-height: 150px; line-height: 1.45; }
+.sll-app textarea.short { min-height: 70px; }
+.sll-row { display: flex; gap: 8px; align-items: center; }
+.sll-row > * { flex: 1 1 auto; }
+.sll-small { flex: none !important; min-height: 40px; padding: 8px 12px; border-radius: 10px; font-size: .85rem; }
+
+.sll-seg { display: flex; background: var(--blue-soft); border-radius: 12px; padding: 4px; gap: 4px; margin-bottom: 10px; }
+.sll-seg button { flex: 1; border: 0; background: transparent; padding: 8px 6px; border-radius: 9px; font: inherit; font-size: .88rem; font-weight: 700; color: var(--blue); cursor: pointer; }
+.sll-seg button[aria-pressed="true"] { background: #fff; box-shadow: 0 1px 4px rgba(31,70,102,.15); }
+.sll-num { display: flex; align-items: center; gap: 8px; }
+.sll-num button { width: 44px; height: 44px; border: 2px solid var(--blue); border-radius: 12px; background: #fff; color: var(--blue); font-size: 1.3rem; font-weight: 800; cursor: pointer; }
+.sll-num input { text-align: center; font-size: 1.15rem !important; font-weight: 700; max-width: 90px; }
+
+.sll-check { display: flex; align-items: flex-start; gap: 10px; margin: 6px 0; font-size: .92rem; cursor: pointer; }
+.sll-check input { width: 20px; height: 20px; margin: 1px 0 0; accent-color: var(--blue); flex: none; }
+.sll-more { display: none; margin: 8px 0 4px 30px; }
+.sll-more.open { display: block; }
+
+.sll-chips { display: flex; flex-wrap: wrap; gap: 6px; max-height: 190px; overflow: auto; }
+.sll-chip { border: 1px solid #c5d3df; background: #fff; border-radius: 999px; padding: 5px 11px; font: inherit; font-size: .85rem; cursor: pointer; color: var(--ink); }
+.sll-chip.absent { background: #fbe9e7; border-color: #f0b4ab; color: #a1392b; text-decoration: line-through; }
+
+.sll-btn { min-height: 48px; padding: 12px 16px; border: 0; border-radius: 14px; font: inherit; font-size: 1rem; font-weight: 700; cursor: pointer; transition: transform .08s ease; }
+.sll-btn:active { transform: translateY(2px); }
+.sll-btn[disabled] { opacity: .55; cursor: default; }
+.sll-btn-primary { background: var(--amber); color: #2a1d00; box-shadow: 0 3px 0 var(--amber-dark); }
+.sll-btn-blue { background: var(--blue); color: #fff; box-shadow: 0 3px 0 var(--blue-dark); }
+.sll-btn-outline { background: #fff; color: var(--blue); border: 2px solid var(--blue); }
+.sll-btn-ghost { background: transparent; color: var(--muted); border: 1px solid var(--line); }
+
+/* ---------- Groups board ---------- */
+.sll-board { padding: 18px; min-height: 420px; display: flex; flex-direction: column; }
+.sll-board-top { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin-bottom: 14px; }
+.sll-board-top h2 { margin: 0; flex: 1 1 auto; font-size: 1.2rem; color: var(--blue); }
+.sll-board-top .sll-btn { min-height: 42px; padding: 9px 14px; font-size: .92rem; }
+.sll-status { min-height: 1.3em; margin: 0 0 10px; font-size: .88rem; color: var(--muted); }
+.sll-status.warn { color: #9a5b00; font-weight: 600; }
+
+.sll-groups { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; flex: 1; align-content: start; }
+.sll-group { --c: var(--blue); border-radius: 16px; background: #fff; border: 2px solid var(--c); overflow: hidden; animation: sll-pop .35s ease both; }
+@keyframes sll-pop { from { transform: translateY(10px) scale(.96); opacity: 0; } to { transform: none; opacity: 1; } }
+.sll-group h3 { margin: 0; padding: 9px 12px; background: var(--c); color: #fff; font-size: 1.05rem; display: flex; justify-content: space-between; align-items: center; }
+.sll-group h3 span { font-size: .8rem; font-weight: 600; opacity: .9; }
+.sll-group ul { list-style: none; margin: 0; padding: 8px; }
+.sll-group li { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 10px; font-size: 1.05rem; font-weight: 600; cursor: pointer; user-select: none; }
+.sll-group li:hover { background: var(--blue-soft); }
+.sll-group li.picked { background: #fff3d6; outline: 2px dashed var(--amber-dark); }
+.sll-role { font-size: .74rem; font-weight: 700; color: var(--c); background: color-mix(in srgb, var(--c) 12%, #fff); padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+
+.sll-app [hidden] { display: none !important; }
+.sll-empty { flex: 1; display: grid; place-items: center; text-align: center; color: var(--muted); padding: 30px; }
+.sll-empty svg { width: 120px; height: 120px; margin-bottom: 8px; opacity: .85; }
+
+.sll-board:fullscreen, .sll-board:-webkit-full-screen { border-radius: 0; border: 0; background: var(--bg); padding: 28px; overflow: auto; }
+.sll-board:fullscreen .sll-groups { grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+.sll-board:fullscreen .sll-group li { font-size: 1.45rem; padding: 10px 12px; }
+.sll-board:fullscreen .sll-group h3 { font-size: 1.4rem; padding: 12px 14px; }
+.sll-board:fullscreen .sll-role { font-size: .95rem; }
+
+.sll-foot { margin-top: 22px; text-align: center; font-size: .85rem; color: var(--muted); }
+.sll-foot a { color: var(--blue); font-weight: 700; }
+
+@media print {
+  body * { visibility: hidden; }
+  .sll-board, .sll-board * { visibility: visible; }
+  .sll-board { position: absolute; left: 0; top: 0; width: 100%; border: 0; box-shadow: none; }
+  .sll-board-top .sll-btn, .sll-status { display: none !important; }
+  .sll-group { break-inside: avoid; animation: none; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
+</style>
+</head>
+<body>
+<div class="sll-app">
+  <div class="sll-wrap">
+    <header class="sll-header">
+      <div class="sll-mark" aria-hidden="true">
+        <svg viewBox="0 0 32 32"><circle cx="10" cy="11" r="4.2" fill="#f5a623"/><circle cx="22" cy="11" r="4.2" fill="#fff"/><path d="M3 25c0-4.2 3.1-7 7-7s7 2.8 7 7z" fill="#f5a623"/><path d="M15 25c0-4.2 3.1-7 7-7s7 2.8 7 7z" fill="#fff"/></svg>
+      </div>
+      <div>
+        <h1 class="sll-title-main">Group Maker</h1>
+        <p class="sll-tagline">Story Learning Lab: random groups in one click, with roles, mixed levels and "keep apart" pairs</p>
+      </div>
+    </header>
+
+    <div class="sll-layout">
+      <!-- Controls -->
+      <div class="sll-card sll-controls">
+        <div class="sll-field">
+          <label class="sll-label" for="classSel">Class list</label>
+          <div class="sll-row">
+            <select id="classSel"><option value="">New list</option></select>
+            <button class="sll-btn sll-btn-outline sll-small" id="saveList" type="button">Save</button>
+            <button class="sll-btn sll-btn-ghost sll-small" id="delList" type="button" title="Delete this saved list">Delete</button>
+          </div>
+          <p class="sll-hint" id="saveHint">Saved lists stay on this computer and browser.</p>
+        </div>
+
+        <div class="sll-field">
+          <label class="sll-label" for="names">Student names (one per line)</label>
+          <textarea id="names" spellcheck="false" placeholder="Mia&#10;Leo&#10;Ava&#10;Noah&#10;..."></textarea>
+          <p class="sll-hint" id="countHint">0 students</p>
+        </div>
+
+        <div class="sll-field">
+          <span class="sll-label">Who's absent today? <span style="font-weight:600;color:var(--muted)">(tap a name)</span></span>
+          <div class="sll-chips" id="chips"><span class="sll-hint" style="margin:0">Names will appear here.</span></div>
+        </div>
+
+        <div class="sll-field">
+          <span class="sll-label">How to split</span>
+          <div class="sll-seg" role="group" aria-label="How to split">
+            <button type="button" id="modeGroups" aria-pressed="true">Number of groups</button>
+            <button type="button" id="modeSize" aria-pressed="false">Students per group</button>
+          </div>
+          <div class="sll-num">
+            <button type="button" id="minus" aria-label="Fewer">−</button>
+            <input type="number" id="num" min="1" max="40" value="4" aria-label="Number">
+            <button type="button" id="plus" aria-label="More">+</button>
+          </div>
+          <p class="sll-hint" id="splitHint"></p>
+        </div>
+
+        <div class="sll-field">
+          <span class="sll-label">Options</span>
+
+          <label class="sll-check"><input type="checkbox" id="optRoles"> Give each student a role</label>
+          <div class="sll-more" id="moreRoles">
+            <input type="text" id="roles" value="Reader, Writer, Presenter, Timekeeper, Checker" aria-label="Roles, separated by commas">
+            <p class="sll-hint">Separate roles with commas. They're shared out in order in each group.</p>
+          </div>
+
+          <label class="sll-check"><input type="checkbox" id="optApart"> Keep some students apart</label>
+          <div class="sll-more" id="moreApart">
+            <textarea id="apart" class="short" spellcheck="false" placeholder="Leo, Noah&#10;Mia, Ava, Zoe"></textarea>
+            <p class="sll-hint">One line per set. Names on the same line go in different groups.</p>
+          </div>
+
+          <label class="sll-check"><input type="checkbox" id="optTogether"> Keep some students together</label>
+          <div class="sll-more" id="moreTogether">
+            <textarea id="together" class="short" spellcheck="false" placeholder="Ava, Mia"></textarea>
+            <p class="sll-hint">One line per pair. Useful for a buddy who helps translate.</p>
+          </div>
+
+          <label class="sll-check"><input type="checkbox" id="optLevels"> Mix levels evenly</label>
+          <div class="sll-more" id="moreLevels">
+            <p class="sll-hint" style="margin-top:0">Add a level after a name, like <b>Mia 3</b> or <b>Leo 1</b> (1 = beginner). Each group gets a fair mix. Levels are never shown on the board.</p>
+          </div>
+
+          <label class="sll-check"><input type="checkbox" id="optNames"> Fun group names (colours)</label>
+        </div>
+
+        <div class="sll-field">
+          <button class="sll-btn sll-btn-primary" id="make" type="button" style="width:100%;font-size:1.1rem">Make groups</button>
+        </div>
+      </div>
+
+      <!-- Board -->
+      <div class="sll-card sll-board" id="board">
+        <div class="sll-board-top">
+          <h2 id="boardTitle">Groups</h2>
+          <button class="sll-btn sll-btn-primary" id="again" type="button" disabled>Shuffle again</button>
+          <button class="sll-btn sll-btn-outline" id="copy" type="button" disabled>Copy</button>
+          <button class="sll-btn sll-btn-outline" id="print" type="button" disabled>Print</button>
+          <button class="sll-btn sll-btn-blue" id="full" type="button">Full screen</button>
+        </div>
+        <p class="sll-status" id="status"></p>
+        <div class="sll-groups" id="groups" hidden></div>
+        <div class="sll-empty" id="empty">
+          <div>
+            <svg viewBox="0 0 120 120" aria-hidden="true"><circle cx="35" cy="38" r="14" fill="#f5a623"/><circle cx="85" cy="38" r="14" fill="#2b5b84"/><circle cx="60" cy="70" r="14" fill="#7fb2dd"/><path d="M14 82c0-12 9-20 21-20s21 8 21 20z" fill="#f5a623" opacity=".55"/><path d="M64 82c0-12 9-20 21-20s21 8 21 20z" fill="#2b5b84" opacity=".55"/><path d="M39 114c0-12 9-20 21-20s21 8 21 20z" fill="#7fb2dd" opacity=".7"/></svg>
+            <p style="margin:0;font-weight:700;color:var(--blue)">Add your names, then press Make groups.</p>
+            <p style="margin:6px 0 0;font-size:.88rem">Tip: tap one student, then another, to swap them.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <p class="sll-foot">Made by <a href="https://www.storylearninglab.com" target="_blank" rel="noopener">Story Learning Lab</a> · Free for teachers · <a href="https://ko-fi.com/benteacher" target="_blank" rel="noopener">Support on Ko-fi ☕</a></p>
+  </div>
+</div>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var COLORS = ['#2b5b84', '#e07a1f', '#2e8b57', '#8e44ad', '#c0392b', '#16879a', '#b8860b', '#d6336c', '#4a6fd1', '#5d7f2a', '#7a4b2a', '#3f4e5e'];
+  var COLOR_NAMES = ['Blue', 'Orange', 'Green', 'Purple', 'Red', 'Teal', 'Gold', 'Pink', 'Indigo', 'Olive', 'Brown', 'Slate'];
+  var STORE = 'sll-group-maker-v1';
+  var mode = 'groups';
+  var absent = {};
+  var current = null;   // array of groups (arrays of names)
+  var picked = null;    // {g, i}
+
+  // ---------- storage (safe) ----------
+  function load() { try { return JSON.parse(localStorage.getItem(STORE)) || { lists: {} }; } catch (e) { return { lists: {} }; } }
+  function save(d) { try { localStorage.setItem(STORE, JSON.stringify(d)); return true; } catch (e) { return false; } }
+  var data = load();
+
+  function refreshLists(sel) {
+    var s = $('classSel'); s.innerHTML = '<option value="">New list</option>';
+    Object.keys(data.lists).sort().forEach(function (k) {
+      var o = document.createElement('option'); o.value = k; o.textContent = k; s.appendChild(o);
+    });
+    s.value = sel || '';
+  }
+
+  // ---------- parsing ----------
+  function parseNames() {
+    var seen = {}, out = [];
+    $('names').value.split(/\r?\n/).forEach(function (line) {
+      var t = line.trim(); if (!t) return;
+      var lvl = null, m = t.match(/^(.*?)[\s,(-]+([1-5])\)?$/);
+      if (m && m[1].trim()) { t = m[1].trim(); lvl = +m[2]; }
+      var key = t.toLowerCase(); if (seen[key]) return; seen[key] = 1;
+      out.push({ name: t, level: lvl });
+    });
+    return out;
+  }
+  function parseSets(id) {
+    if (!$(id === 'apart' ? 'optApart' : 'optTogether').checked) return [];
+    return $(id).value.split(/\r?\n/).map(function (l) {
+      return l.split(/[,;&+\/]|\band\b/i).map(function (x) { return x.trim().toLowerCase(); }).filter(Boolean);
+    }).filter(function (s) { return s.length > 1; });
+  }
+
+  function present() { return parseNames().filter(function (s) { return !absent[s.name.toLowerCase()]; }); }
+
+  // ---------- UI updates ----------
+  function renderChips() {
+    var list = parseNames(), box = $('chips'); box.innerHTML = '';
+    var live = {}; list.forEach(function (s) { live[s.name.toLowerCase()] = 1; });
+    Object.keys(absent).forEach(function (k) { if (!live[k]) delete absent[k]; });
+    if (!list.length) { box.innerHTML = '<span class="sll-hint" style="margin:0">Names will appear here.</span>'; }
+    list.forEach(function (s) {
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'sll-chip' + (absent[s.name.toLowerCase()] ? ' absent' : '');
+      b.textContent = s.name;
+      b.onclick = function () { var k = s.name.toLowerCase(); if (absent[k]) delete absent[k]; else absent[k] = 1; renderChips(); };
+      box.appendChild(b);
+    });
+    var n = present().length, a = list.length - n;
+    $('countHint').textContent = list.length + ' student' + (list.length === 1 ? '' : 's') + (a ? ' · ' + a + ' absent · ' + n + ' here' : '');
+    updateSplitHint();
+  }
+
+  function groupCount(n) {
+    var v = Math.max(1, parseInt($('num').value, 10) || 1);
+    if (mode === 'groups') return Math.min(v, Math.max(1, n));
+    return Math.max(1, Math.round(n / v));
+  }
+  function updateSplitHint() {
+    var n = present().length, h = $('splitHint');
+    if (!n) { h.textContent = ''; return; }
+    var g = groupCount(n), lo = Math.floor(n / g), hi = Math.ceil(n / g);
+    h.textContent = n + ' students → ' + g + ' group' + (g === 1 ? '' : 's') + ' of ' + (lo === hi ? lo : lo + '–' + hi);
+  }
+
+  // ---------- grouping ----------
+  function shuffle(a) { for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+
+  function build(students, g, useLevels, together) {
+    // merge "together" sets into units
+    var byKey = {}; students.forEach(function (s) { byKey[s.name.toLowerCase()] = s; });
+    var used = {}, units = [];
+    together.forEach(function (set) {
+      var u = set.map(function (k) { return byKey[k]; }).filter(function (s) { return s && !used[s.name.toLowerCase()]; });
+      if (u.length > 1) { u.forEach(function (s) { used[s.name.toLowerCase()] = 1; }); units.push(u); }
+    });
+    students.forEach(function (s) { if (!used[s.name.toLowerCase()]) units.push([s]); });
+    shuffle(units);
+    var lv = function (u) { var t = 0, c = 0; u.forEach(function (s) { if (s.level) { t += s.level; c++; } }); return c ? t / c : 3; };
+    if (useLevels) units.sort(function (a, b) { return lv(b) - lv(a); });
+    else units.sort(function (a, b) { return b.length - a.length; });
+
+    var groups = []; for (var i = 0; i < g; i++) groups.push([]);
+    var cap = Math.ceil(students.length / g);
+    if (useLevels) {
+      // snake draft, so every group gets high, middle and low
+      var dir = 1, gi = 0;
+      units.forEach(function (u) {
+        var tries = 0;
+        while (groups[gi].length + u.length > cap && tries < g) { gi = (gi + 1) % g; tries++; }
+        groups[gi].push.apply(groups[gi], u);
+        gi += dir;
+        if (gi >= g) { gi = g - 1; dir = -1; } else if (gi < 0) { gi = 0; dir = 1; }
+      });
+    } else {
+      units.forEach(function (u) {
+        var best = 0; for (var k = 1; k < g; k++) if (groups[k].length < groups[best].length) best = k;
+        groups[best].push.apply(groups[best], u);
+      });
+    }
+    return groups;
+  }
+
+  function conflicts(groups, apart) {
+    var c = 0;
+    groups.forEach(function (gr) {
+      var ks = gr.map(function (s) { return s.name.toLowerCase(); });
+      apart.forEach(function (set) {
+        var hit = set.filter(function (k) { return ks.indexOf(k) > -1; }).length;
+        if (hit > 1) c += hit - 1;
+      });
+    });
+    return c;
+  }
+  function splitsTogether(groups, together) {
+    var where = {}; groups.forEach(function (gr, i) { gr.forEach(function (s) { where[s.name.toLowerCase()] = i; }); });
+    return together.some(function (set) {
+      var gs = set.filter(function (k) { return k in where; }).map(function (k) { return where[k]; });
+      return gs.some(function (x) { return x !== gs[0]; });
+    });
+  }
+
+  function make() {
+    var students = present();
+    if (students.length < 2) { status('Add at least two students who are here today.', true); return; }
+    var g = groupCount(students.length);
+    var apart = parseSets('apart'), together = parseSets('together');
+    var useLevels = $('optLevels').checked && students.some(function (s) { return s.level; });
+    var best = null, bestC = Infinity;
+    for (var t = 0; t < 400 && bestC > 0; t++) {
+      var gr = build(students, g, useLevels, together);
+      var c = conflicts(gr, apart);
+      if (c < bestC) { best = gr; bestC = c; }
+    }
+    // try swaps to clear remaining "keep apart" clashes
+    for (var s = 0; s < 3000 && bestC > 0; s++) {
+      var a = Math.floor(Math.random() * g), b = Math.floor(Math.random() * g); if (a === b) continue;
+      var i = Math.floor(Math.random() * best[a].length), j = Math.floor(Math.random() * best[b].length);
+      var x = best[a][i], y = best[b][j];
+      if (useLevels && (x.level || 3) !== (y.level || 3)) continue;
+      best[a][i] = y; best[b][j] = x;
+      var c2 = conflicts(best, apart);
+      if (c2 < bestC && !splitsTogether(best, together)) bestC = c2; else { best[a][i] = x; best[b][j] = y; }
+    }
+    current = best.map(function (gr) { return gr.map(function (s) { return s.name; }); });
+    picked = null;
+    render();
+    status(bestC ? 'Couldn\'t keep everyone apart with this many groups. Try more groups, or tap names to swap.' :
+      'Tap one student, then another, to swap them.', !!bestC);
+  }
+
+  function roles() {
+    if (!$('optRoles').checked) return [];
+    return $('roles').value.split(',').map(function (r) { return r.trim(); }).filter(Boolean);
+  }
+
+  function render(still) {
+    var box = $('groups'); box.innerHTML = '';
+    var rs = roles(), fun = $('optNames').checked;
+    current.forEach(function (gr, gi) {
+      var col = COLORS[gi % COLORS.length];
+      var d = document.createElement('div'); d.className = 'sll-group'; d.style.setProperty('--c', col); if (still) d.style.animation = 'none'; else d.style.animationDelay = (gi * 60) + 'ms';
+      var title = fun ? COLOR_NAMES[gi % COLOR_NAMES.length] + ' Team' + (gi >= COLOR_NAMES.length ? ' ' + (Math.floor(gi / COLOR_NAMES.length) + 1) : '') : 'Group ' + (gi + 1);
+      d.innerHTML = '<h3>' + esc(title) + '<span>' + gr.length + '</span></h3>';
+      var ul = document.createElement('ul');
+      gr.forEach(function (name, i) {
+        var li = document.createElement('li');
+        if (picked && picked.g === gi && picked.i === i) li.className = 'picked';
+        li.innerHTML = '<span>' + esc(name) + '</span>' + (rs.length ? '<span class="sll-role">' + esc(rs[i % rs.length]) + '</span>' : '');
+        li.onclick = function () { pick(gi, i); };
+        ul.appendChild(li);
+      });
+      d.appendChild(ul); box.appendChild(d);
+    });
+    box.hidden = false; $('empty').hidden = true;
+    ['again', 'copy', 'print'].forEach(function (id) { $(id).disabled = false; });
+    $('boardTitle').textContent = current.length + ' group' + (current.length === 1 ? '' : 's');
+  }
+
+  function pick(g, i) {
+    if (!picked) { picked = { g: g, i: i }; render(true); status('Now tap the student to swap with ' + current[g][i] + '.'); return; }
+    if (picked.g === g && picked.i === i) { picked = null; render(true); status('Tap one student, then another, to swap them.'); return; }
+    var a = current[picked.g][picked.i], b = current[g][i];
+    current[picked.g][picked.i] = b; current[g][i] = a;
+    picked = null;
+    render(true); status('Swapped ' + a + ' and ' + b + '.');
+  }
+
+  function status(t, warn) { var s = $('status'); s.textContent = t || ''; s.className = 'sll-status' + (warn ? ' warn' : ''); }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+  // ---------- events ----------
+  $('names').addEventListener('input', renderChips);
+  $('modeGroups').onclick = function () { setMode('groups'); };
+  $('modeSize').onclick = function () { setMode('size'); };
+  function setMode(m) { mode = m; $('modeGroups').setAttribute('aria-pressed', m === 'groups'); $('modeSize').setAttribute('aria-pressed', m === 'size'); updateSplitHint(); }
+  $('minus').onclick = function () { $('num').value = Math.max(1, (parseInt($('num').value, 10) || 1) - 1); updateSplitHint(); };
+  $('plus').onclick = function () { $('num').value = Math.min(40, (parseInt($('num').value, 10) || 1) + 1); updateSplitHint(); };
+  $('num').addEventListener('input', updateSplitHint);
+  [['optRoles', 'moreRoles'], ['optApart', 'moreApart'], ['optTogether', 'moreTogether'], ['optLevels', 'moreLevels']].forEach(function (p) {
+    $(p[0]).addEventListener('change', function () { $(p[1]).classList.toggle('open', this.checked); if (current && p[0] === 'optRoles') render(true); });
+  });
+  $('optNames').addEventListener('change', function () { if (current) render(true); });
+  $('roles').addEventListener('input', function () { if (current) render(true); });
+  $('make').onclick = make;
+  $('again').onclick = make;
+
+  $('copy').onclick = function () {
+    var rs = roles(), fun = $('optNames').checked;
+    var txt = current.map(function (gr, gi) {
+      var title = fun ? COLOR_NAMES[gi % COLOR_NAMES.length] + ' Team' : 'Group ' + (gi + 1);
+      return title + ':\n' + gr.map(function (n, i) { return '  ' + n + (rs.length ? ' (' + rs[i % rs.length] + ')' : ''); }).join('\n');
+    }).join('\n\n');
+    var done = function () { status('Copied. Paste it into Slack, a doc or an email.'); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done, fallback); else fallback();
+    function fallback() { var t = document.createElement('textarea'); t.value = txt; document.body.appendChild(t); t.select(); try { document.execCommand('copy'); done(); } catch (e) { status('Copy didn\'t work in this browser.', true); } t.remove(); }
+  };
+  $('print').onclick = function () { window.print(); };
+
+  var board = $('board');
+  var canFull = board.requestFullscreen || board.webkitRequestFullscreen;
+  if (!canFull) $('full').hidden = true;
+  $('full').onclick = function () {
+    var fs = document.fullscreenElement || document.webkitFullscreenElement;
+    if (fs) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+    else (board.requestFullscreen || board.webkitRequestFullscreen).call(board);
+  };
+  ['fullscreenchange', 'webkitfullscreenchange'].forEach(function (ev) {
+    document.addEventListener(ev, function () { $('full').textContent = (document.fullscreenElement || document.webkitFullscreenElement) ? 'Exit full screen' : 'Full screen'; });
+  });
+
+  // saved lists
+  $('classSel').onchange = function () {
+    var k = this.value; absent = {};
+    if (k && data.lists[k]) {
+      var L = data.lists[k];
+      $('names').value = L.names || '';
+      $('apart').value = L.apart || ''; $('together').value = L.together || '';
+      $('optApart').checked = !!L.apart; $('moreApart').classList.toggle('open', !!L.apart);
+      $('optTogether').checked = !!L.together; $('moreTogether').classList.toggle('open', !!L.together);
+    } else { $('names').value = ''; }
+    renderChips();
+  };
+  $('saveList').onclick = function () {
+    if (!$('names').value.trim()) { $('saveHint').textContent = 'Add some names first.'; $('saveHint').className = 'sll-hint bad'; return; }
+    var k = $('classSel').value;
+    if (!k) { showNameBox(); return; }
+    store(k);
+  };
+  function showNameBox() {
+    if ($('listName')) { $('listName').focus(); return; }
+    var row = document.createElement('div'); row.className = 'sll-row'; row.style.marginTop = '8px';
+    row.innerHTML = '<input type="text" id="listName" placeholder="Class name, e.g. G3 ESL" maxlength="40"><button class="sll-btn sll-btn-blue sll-small" type="button" id="listOk">Save</button>';
+    $('saveHint').parentNode.insertBefore(row, $('saveHint'));
+    $('listName').focus();
+    var go = function () { var v = $('listName').value.trim(); if (v) { store(v); row.remove(); } };
+    $('listOk').onclick = go;
+    $('listName').addEventListener('keydown', function (e) { if (e.key === 'Enter') go(); });
+  }
+  function store(k) {
+    data.lists[k] = { names: $('names').value, apart: $('apart').value, together: $('together').value };
+    var ok = save(data); refreshLists(k);
+    $('saveHint').textContent = ok ? 'Saved "' + k + '" on this computer.' : 'This browser won\'t save lists. Copy your names somewhere safe.';
+    $('saveHint').className = 'sll-hint' + (ok ? '' : ' bad');
+  }
+  $('delList').onclick = function () {
+    var k = $('classSel').value; if (!k) return;
+    delete data.lists[k]; save(data); refreshLists(''); $('saveHint').textContent = 'Deleted "' + k + '".'; $('saveHint').className = 'sll-hint';
+  };
+
+  refreshLists('');
+  renderChips();
+})();
+</script>
+</body>
+</html>
